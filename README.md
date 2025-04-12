@@ -1,5 +1,7 @@
 # agentic
-AGENTIC creation kit
+AGENTIC creation kit<br />
+deploys coordinator.agent<br />
+delivers agency
 
 
 # AGENTIC AI Assistant (v1.0.0) 🚀
@@ -12,9 +14,9 @@ AGENTIC creation kit
 
 ---
 
-**A web-based AI assistant leveraging the Google Agent Development Kit (ADK) for question answering and dynamic agent configuration.**
+**A web-based AI coordinator.agent leveraging the Google Agent Development Kit (ADK) for dynamic agent configuration as the answer to your question**
 
-This project provides a decoupled frontend/backend application allowing users to interact with a pre-configured Google ADK agent and generate configurations for new agents via a simple web UI. It includes an automated setup script for streamlined deployment.
+This project provides a decoupled frontend/backend application allowing users to interact with a pre-configured Google ADK agent and generate configurations for new agents via a stregically simple web UI agentic point of departure. Setup is automated as a single ./agentic.sh command for streamlined deployment.
 
 ## Table of Contents
 
@@ -43,23 +45,23 @@ This project provides a decoupled frontend/backend application allowing users to
 
 ---
 
-## 1. Introduction
+## Introduction
 
-Welcome to the AGENTIC AI Assistant project (v1.0.0). This application serves as a demonstration and starting point for building web interfaces that interact with AI agents developed using the Google Agent Development Kit (ADK).
+Welcome to the AGENTIC AI augmented agency project (v1.0.0). AGENTIC serves a fastapi backend with a nodejs frontend for building web interfaces that interact with AI agents developed using the Google Agent Development Kit (ADK)
 
 **Key Goals:**
 
-*   Provide a user-friendly web UI for asking questions to an AI agent.
-*   Utilize a backend API built with FastAPI to handle agent interactions.
-*   Leverage the `google-adk` library for core agent capabilities, including tool usage (Google Search).
-*   Demonstrate dynamic agent configuration file generation based on user input.
-*   Offer a fully automated setup process via a Bash script (`run.sh` / `run3.sh`).
+*   Provide a user-friendly web UI for coordinator.agent to answer your questions or the questionso of an AI agent
+*   Utilize a backend API built with FastAPI to handle agent interactions
+*   Leverage the `google-adk` library for core agent capabilities, including tool usage (Google Search)
+*   Demonstrate dynamic agent configuration file generation based on user input
+*   Offer a fully automated setup process via a Bash script (`run.sh` / `run3.sh`)
 
-This project is ideal for developers looking to understand how to integrate Google ADK agents into a web application context or for those needing a simple, extensible AI assistant platform.
+This project is ideal for developers looking to understand how to integrate Google ADK agents into a web application context or for those needing a powerfully simple, extensible AI assistant platform
 
 ---
 
-## 2. Technical Explanation
+## Technical Explanation
 
 This section details the system's architecture, components, and the technologies employed.
 
@@ -68,9 +70,10 @@ This section details the system's architecture, components, and the technologies
 The application follows a standard decoupled frontend-backend architecture:
 
 *   **Frontend:** A static single-page application (SPA) built with HTML, CSS, and vanilla JavaScript. It is served by a lightweight Node.js/Express server primarily acting as a static file server. The frontend makes asynchronous API calls to the backend.
-*   **Backend:** A Python-based API server built using the FastAPI framework and served via Uvicorn. It houses the core business logic, including the instantiation and execution of the Google ADK `LlmAgent`. It exposes RESTful endpoints for the frontend to consume.
-*   **Setup Script:** A Bash script (`run.sh` or variant) automates the entire process of directory creation, file generation from templates, dependency installation (Python/Node.js), and launching both servers.
-*   **Agent Configuration:** Agent definitions (like the default one and dynamically created ones) rely on Python files (`agent.py`) and environment variables (`.env`) for their specific settings (model, API keys, instructions).
+*   **Backend:** A Python-based API server built using the FastAPI framework and served via Uvicorn housing the core business logic, including the instantiation and execution of the Google ADK `LlmAgent` exposing RESTful endpoints for the frontend to consume
+*   **Setup Script:** A Bash script (`agentic.sh`) automates the entire process of directory creation, file generation from templates, dependency installation (Python/Node.js), and launching both servers<br /><br />
+................... you have to see it to believe it ....................................<br />
+*   **Agent Configuration:** Agent definitions (like the default one and dynamically created ones) rely on Python files (`agent.py`) and environment variables (`.env`) for their specific settings (model, API keys, instructions)
 
 ### System Diagram
 
@@ -107,7 +110,7 @@ graph LR
     style D fill:#9cf,stroke:#333,stroke-width:2px
     style G fill:#ff9,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
     style H fill:#ddd,stroke:#333,stroke-width:1px
-Use code with caution.
+
 Markdown
 Core Components
 run.sh (or variant): Orchestrator
