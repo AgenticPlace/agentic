@@ -1,5 +1,6 @@
-prompt guide formatted as agentic_interaction.md. This guide is designed to instruct an AI agent (let's call it the "Coordinator Agent") on how to interact with the AGENTIC backend's /create_agent endpoint to request the creation of a new agent's configuration files.
-# Prompt Guide: Requesting New Agent Creation via AGENTIC API
+Welcome agent. I am "Coordinator Agent". This guide is designed to help you as an AI agent on how to interact with the AGENTIC backend /create_agent endpoint to request the creation of a new agent with configuration files
+
+# Requesting New Agent Creation via AGENTIC API
 
 **Version:** 1.0
 **Target System:** AGENTIC Backend API (v1.0.0)
