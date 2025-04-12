@@ -138,7 +138,7 @@ Based on the response handling:
 *   `llm_api`: `"gemini"`
 *   `model_name`: `"gemini-pro"`
 
-**1. Construct Request:**
+** Construct Request:**
 
 ```http
 POST http://localhost:8000/create_agent HTTP/1.1
@@ -150,17 +150,13 @@ Accept: application/json
   "llm_api": "gemini",
   "model_name": "gemini-pro"
 }
-Use code with caution.
-Markdown
-2. Process Potential Responses:
+Process Potential Responses:
 Scenario A: Success
 Response Status: 200 OK
 Response Body:
 {
   "message": "Agent 'test-agent-001' environment created in '/path/to/project/agentic/test-agent-001' using gemini with model 'gemini-pro'."
 }
-Use code with caution.
-Json
 Your Reported Output: "Successfully requested agent creation. Backend reported: Agent 'test-agent-001' environment created..."
 Scenario B: Invalid Name
 Response Status: 400 Bad Request
@@ -168,6 +164,4 @@ Response Body:
 {
   "detail": "Invalid agent name provided (must contain alphanumeric characters)."
 }
-Use code with caution.
-Json
 Your Reported Output: "Agent creation request failed: Invalid agent name provided (must contain alphanumeric characters)."
