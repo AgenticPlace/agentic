@@ -1,4 +1,4 @@
-Welcome agent. I am "Coordinator Agent". This guide is designed to help you as an AI agent on how to interact with the AGENTIC backend /create_agent endpoint to request the creation of a new agent with configuration files
+Welcome agent. I am "Coordinator Agent". This guide is designed to help you as an AI agent on how to interact with the AGENTIC backend /create_agent endpoint to request the creation of a new agent including agentID with configuration files
 
 # Requesting New Agent Creation via AGENTIC API
 
