@@ -26,6 +26,9 @@ BACKEND_DIR="$AGENTIC_DIR/backend" # Relative to PROJECT_ROOT
 UTILS_DIR="$BACKEND_DIR/utils" # Relative to PROJECT_ROOT
 FRONTEND_DIR="frontend" # Relative to PROJECT_ROOT
 
+MINDX_DIR="mindX" # Relative to PROJECT_ROOT
+MINDX_VENV_NAME="mindx_venv" # Name for the mindX virtual environment
+
 BACKEND_VENV_NAME="adk"
 FRONTEND_PORT=3000
 BACKEND_PORT=8000
@@ -353,14 +356,106 @@ except ImportError as e:
     # exit(1) # Uncomment to make utils mandatory
 
 
+from contextlib import asynccontextmanager
+
+# mindX specific imports - assuming mindX directory is added to PYTHONPATH by the calling script
+# These might need adjustment based on the exact structure of mindX project
+# and how it's intended to be imported as a library/module.
+try:
+    from orchestration.mastermind_agent import MastermindAgent
+    from agents.memory_agent import MemoryAgent as MindXMemoryAgent # Alias to avoid potential conflicts
+    from orchestration.coordinator_agent import get_coordinator_agent_mindx_async
+    from core.id_manager_agent import IDManagerAgent as MindXIDManagerAgent
+    from agents.guardian_agent import GuardianAgent as MindXGuardianAgent
+    from utils.config import Config as MindXConfig
+    # from utils.logging_config import setup_logging as setup_mindx_logging # If mindX has its own logger setup needed
+    MINDX_AVAILABLE = True
+    print("Main: Successfully imported mindX components.")
+except ImportError as e:
+    MINDX_AVAILABLE = False
+    print(f"Main: WARNING - Failed to import mindX components: {e}")
+    print("Main: mindX features will be unavailable. Ensure mindX is in PYTHONPATH.")
+    # Define dummy classes if mindX is optional for AGENTIC to run
+    class MastermindAgent: pass # Dummy
+    # Add other dummy classes as needed if parts of AGENTIC try to use them conditionally
+
 # Setup the logger early
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-setup_logger(name="app", log_level_str=LOG_LEVEL)
+setup_logger(name="app", log_level_str=LOG_LEVEL) # This is AGENTIC's logger
 logger = get_logger(__name__) # Gets the 'app' logger instance configured above
 
 logger.info("--- Starting FastAPI Application Setup ---")
 
-app = FastAPI(title="AGENTIC Backend", version="1.0.0")
+# Global state for mindX components
+mindx_mastermind_instance: Optional[MastermindAgent] = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global mindx_mastermind_instance
+    logger.info("FastAPI app starting up - Initializing mindX components...")
+    if MINDX_AVAILABLE:
+        try:
+            # It's important that mindX's own logging is configured if it doesn't use AGENTIC's.
+            # For example, if mindX has a setup_logging function:
+            # setup_mindx_logging() # Call this if mindX has its own logger setup.
+
+            # Initialize mindX Config. This might need a specific config file path.
+            # Assuming mindX.utils.config.Config can find its config or uses defaults.
+            # The path to mindX config files needs to be resolvable.
+            # For now, let's assume it finds a default or is configured via environment variables.
+            # A more robust way would be to pass a config path or object.
+            # This path needs to be correct relative to where the backend runs or be absolute.
+            # Example: mindx_config_path = os.path.join(AGENTIC_DIR, "..", "mindX", "config.mindx.yaml")
+            # For now, using a generic Config() call, assuming it has defaults or env var based setup.
+
+            # Determine Project Root for mindX config, assuming mindX is sibling to agentic dir
+            # This requires careful path management. AGENTIC_DIR is PROJECT_ROOT/agentic
+            # So mindX would be PROJECT_ROOT/mindX.
+            # The mindX Config class itself uses `PROJECT_ROOT` from its own utils.config
+            # which should correctly point to the mindX project root if PYTHONPATH is set.
+            mindx_config = MindXConfig() # This should use mindX's own PROJECT_ROOT resolution.
+
+            memory_agent = MindXMemoryAgent(config=mindx_config) # Pass mindX config
+
+            # Ensure IDManagerAgent and GuardianAgent get the mindX config
+            id_manager = await MindXIDManagerAgent.get_instance(config_override=mindx_config, memory_agent=memory_agent)
+            guardian_agent = await MindXGuardianAgent.get_instance(id_manager=id_manager, config_override=mindx_config)
+
+            coordinator_instance = await get_coordinator_agent_mindx_async(
+                config_override=mindx_config, # Pass mindX config
+                memory_agent=memory_agent
+            )
+            if not coordinator_instance:
+                raise RuntimeError("Failed to initialize mindX CoordinatorAgent.")
+
+            mindx_mastermind_instance = await MastermindAgent.get_instance(
+                config_override=mindx_config, # Pass mindX config
+                coordinator_agent_instance=coordinator_instance,
+                memory_agent=memory_agent,
+                guardian_agent=guardian_agent # Pass guardian_agent if MastermindAgent expects it
+            )
+            app.state.mastermind_agent = mindx_mastermind_instance
+            logger.info("mindX MastermindAgent initialized and available via app.state.mastermind_agent")
+        except Exception as e:
+            logger.error(f"Failed to initialize mindX components: {e}", exc_info=True)
+            app.state.mastermind_agent = None # Ensure it's None if init fails
+    else:
+        logger.warning("mindX components not available. Skipping initialization.")
+        app.state.mastermind_agent = None
+
+    yield
+
+    logger.info("FastAPI app shutting down - Shutting down mindX components...")
+    if hasattr(app.state, 'mastermind_agent') and app.state.mastermind_agent:
+        try:
+            await app.state.mastermind_agent.shutdown()
+            logger.info("mindX MastermindAgent shutdown complete.")
+        except Exception as e:
+            logger.error(f"Error shutting down mindX MastermindAgent: {e}", exc_info=True)
+    else:
+        logger.info("No mindX MastermindAgent instance to shut down.")
+
+app = FastAPI(title="AGENTIC Backend", version="1.0.0", lifespan=lifespan)
 
 # CORS middleware
 FRONTEND_PORT_NUM = os.getenv('FRONTEND_PORT', '3000')
@@ -435,6 +530,16 @@ class CreateAgentRequest(BaseModel):
 
 class CreateAgentResponse(BaseModel):
     message: str
+
+# Pydantic models for mindX interaction
+class MindXDirectiveRequest(BaseModel):
+    directive: str
+    # Potentially other parameters like max_cycles, etc.
+
+class MindXEvolutionResponse(BaseModel):
+    status: str
+    message: Optional[str] = None
+    details: Optional[Dict[str, Any]] = None
 
 
 # --- Helper Function for Agent Creation ---
@@ -618,6 +723,53 @@ async def read_root():
     """Root endpoint providing basic info."""
     return {"message": "Welcome to the AGENTIC Backend API. See /docs for details."}
 
+# --- mindX Integration Endpoint ---
+@app.post("/mindx/evolve/", response_model=MindXEvolutionResponse, tags=["mindX Integration"])
+async def mindx_evolve_endpoint(payload: MindXDirectiveRequest, request: Request):
+    """
+    Endpoint to trigger mindX evolution with a directive.
+    """
+    logger.info(f"Received request for /mindx/evolve/ with directive: '{payload.directive[:100]}...'")
+
+    mastermind_agent_instance = getattr(request.app.state, 'mastermind_agent', None)
+
+    if not MINDX_AVAILABLE or not mastermind_agent_instance:
+        logger.error("mindX MastermindAgent is not available for /mindx/evolve/ endpoint.")
+        raise HTTPException(
+            status_code=503,
+            detail="mindX integration is currently unavailable. Check backend logs."
+        )
+
+    try:
+        # Default max_mastermind_bdi_cycles can be defined in MastermindAgent or passed here if needed
+        # For now, using the default in manage_mindx_evolution
+        evolution_result = await mastermind_agent_instance.manage_mindx_evolution(
+            top_level_directive=payload.directive
+        )
+
+        # Adapt the result from manage_mindx_evolution to MindXEvolutionResponse
+        # Assuming evolution_result is a dict like:
+        # {"overall_campaign_status": "SUCCESS" or "FAILURE_OR_INCOMPLETE", "final_bdi_message": "...", ...}
+        status_map = {
+            "SUCCESS": "completed",
+            "FAILURE_OR_INCOMPLETE": "failed_or_incomplete"
+        }
+        response_status = status_map.get(evolution_result.get("overall_campaign_status", "unknown"), "unknown")
+
+        logger.info(f"mindX evolution result: {evolution_result}")
+        return MindXEvolutionResponse(
+            status=response_status,
+            message=f"mindX evolution campaign finished with status: {evolution_result.get('overall_campaign_status')}",
+            details=evolution_result
+        )
+
+    except Exception as e:
+        logger.error(f"Error processing /mindx/evolve/ for directive '{payload.directive}': {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"An internal error occurred while processing your mindX request: {str(e)}"
+        )
+
 
 logger.info("--- FastAPI Application Setup Complete ---")
 
@@ -776,6 +928,21 @@ function install_frontend_dependencies {
             </div>
         </div>
 
+        <!-- mindX Interaction Section -->
+        <div class="mindx-interaction-area section-box">
+            <h2>Interact with mindX (via Mastermind)</h2>
+            <div class="input-group">
+                <label for="mindXDirectiveInput">Directive for mindX:</label>
+                <textarea id="mindXDirectiveInput" rows="3" placeholder="Enter a high-level directive for mindX evolution..."></textarea>
+            </div>
+            <button id="evolveMindXButton">Evolve mindX</button>
+            <p id="mindXStatus" class="status-message"></p>
+            <div class="output-area">
+                <h3>mindX Response:</h3>
+                <pre id="mindXResponseOutput" class="output-content">Awaiting directive...</pre>
+            </div>
+        </div>
+
     </div>
     <!-- Link JS at the end of body -->
     <script src="dapp.js"></script>
@@ -796,6 +963,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const llmApiSelect = document.getElementById('llmApi');
     const modelNameInput = document.getElementById('modelName');
     const creationStatus = document.getElementById('creationStatus');
+
+    // mindX UI Elements
+    const mindXDirectiveInput = document.getElementById('mindXDirectiveInput');
+    const evolveMindXButton = document.getElementById('evolveMindXButton');
+    const mindXStatus = document.getElementById('mindXStatus');
+    const mindXResponseOutput = document.getElementById('mindXResponseOutput');
 
     // Determine backend URL - dynamically set by build script
     const backendBaseUrl = "__BACKEND_BASE_URL__";
@@ -1279,6 +1452,97 @@ EOF_JSON
 }
 
 
+function install_mindx_dependencies {
+  log_info "Setting up mindX Python environment..."
+
+  # Ensure mindX directory exists (though it should, as it contains the project)
+  # Using absolute path for cd ensures consistency
+  local abs_mindx_dir="$PROJECT_ROOT/$MINDX_DIR"
+  if [ ! -d "$abs_mindx_dir" ]; then
+    log_error "mindX project directory not found at: $abs_mindx_dir"
+    log_error "Please ensure the 'mindX' project is correctly placed in the project root."
+    return 1
+  fi
+
+  local current_dir
+  current_dir=$(pwd)
+  if ! cd "$abs_mindx_dir"; then
+      log_error "Failed to cd to mindX directory: $abs_mindx_dir"
+      return 1
+  fi
+
+  log_info "Currently in mindX directory: $(pwd)"
+
+  # Check for requirements.txt
+  if [ ! -f "requirements.txt" ]; then
+    log_error "mindX requirements.txt not found in $abs_mindx_dir"
+    log_error "Cannot install mindX dependencies."
+    cd "$current_dir" || exit 1 # Attempt to return before failing
+    return 1
+  fi
+
+  # Create virtual environment if it doesn't exist
+  if [ ! -d "$MINDX_VENV_NAME" ]; then
+    log_info "Creating mindX virtual environment '$MINDX_VENV_NAME' in $(pwd)..."
+    if ! python3 -m venv "$MINDX_VENV_NAME"; then
+        log_error "Failed to create mindX virtual environment in $(pwd)"
+        cd "$current_dir" || exit 1
+        return 1
+    fi
+    log_info "mindX virtual environment created."
+    # Activate immediately for pip upgrade
+    log_info "Activating mindX virtual environment for pip upgrade..."
+    if ! source "$MINDX_VENV_NAME/bin/activate"; then
+        log_error "Failed to activate mindX virtual environment in $(pwd) for pip upgrade"
+        cd "$current_dir" || exit 1
+        return 1
+    fi
+    log_info "Upgrading pip in mindX virtual environment..."
+    if ! python -m pip install --upgrade pip -q; then
+        log_error "Failed to upgrade pip in mindX venv."
+        deactivate
+        cd "$current_dir" || exit 1
+        return 1
+    fi
+    # Deactivate after pip upgrade, will reactivate for installing requirements
+    deactivate
+    log_info "Deactivated mindX virtual environment after pip upgrade."
+  fi
+
+  # Activate virtual environment to install requirements
+  log_info "Activating mindX virtual environment '$MINDX_VENV_NAME' to install dependencies..."
+  if ! source "$MINDX_VENV_NAME/bin/activate"; then
+      log_error "Failed to activate mindX virtual environment in $(pwd) for installing dependencies"
+      cd "$current_dir" || exit 1
+      return 1
+  fi
+  log_info "mindX virtual environment '$MINDX_VENV_NAME' activated."
+
+  # Install requirements
+  log_info "Installing mindX dependencies from requirements.txt..."
+  if ! pip install -r "requirements.txt" -q; then
+      log_error "Failed to install mindX dependencies from requirements.txt in $(pwd)."
+      log_error "Check the mindX requirements.txt file, network connection, and previous logs."
+      deactivate
+      cd "$current_dir" || exit 1
+      return 1
+  fi
+  log_info "mindX dependencies installed successfully."
+
+  # Deactivate the virtual environment
+  deactivate
+  log_info "mindX virtual environment deactivated."
+
+  # Return to the original directory
+  if ! cd "$current_dir"; then
+      log_error "Failed to cd back to original directory: $current_dir from mindX setup"
+      exit 1 # This is problematic, exit the script
+  fi
+  log_info "mindX Python environment setup complete."
+  return 0
+}
+
+
 function run_backend {
   log_info "Starting AGENTIC backend (FastAPI) on http://localhost:$BACKEND_PORT..."
   # Store current directory to return to it
@@ -1303,6 +1567,11 @@ function run_backend {
     cd "$current_dir" || exit 1 # Attempt to return to original directory before failing
     return 1
   fi
+
+  # Add mindX project directory to PYTHONPATH so backend can import mindX modules
+  local abs_mindx_dir_for_pythonpath="$PROJECT_ROOT/$MINDX_DIR"
+  log_info "Prepending mindX directory to PYTHONPATH: $abs_mindx_dir_for_pythonpath"
+  export PYTHONPATH="$abs_mindx_dir_for_pythonpath:$PYTHONPATH"
 
   log_info "Starting uvicorn server in the background..."
   # Ensure uvicorn is runnable (should be if install succeeded)
@@ -1470,6 +1739,9 @@ install_backend_dependencies || { log_error "Backend setup failed. Exiting."; ex
 
 # Install frontend dependencies and create files
 install_frontend_dependencies || { log_error "Frontend setup failed. Exiting."; exit 1; } # Exit if setup fails
+
+# Install mindX dependencies
+install_mindx_dependencies || { log_error "mindX setup failed. Exiting."; exit 1; }
 
 # Clear PIDs before running
 BACKEND_PID=""
