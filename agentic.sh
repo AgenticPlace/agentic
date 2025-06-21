@@ -21,10 +21,10 @@ function log_error {
 # --- Continue Configuration ---
 log_info "Project Root detected as: $PROJECT_ROOT" # Add log for verification
 
-AGENTIC_DIR="./agentic" # Relative to PROJECT_ROOT
+AGENTIC_DIR="agentic" # Relative to PROJECT_ROOT
 BACKEND_DIR="$AGENTIC_DIR/backend" # Relative to PROJECT_ROOT
 UTILS_DIR="$BACKEND_DIR/utils" # Relative to PROJECT_ROOT
-FRONTEND_DIR="./frontend" # Relative to PROJECT_ROOT
+FRONTEND_DIR="frontend" # Relative to PROJECT_ROOT
 
 BACKEND_VENV_NAME="adk"
 FRONTEND_PORT=3000
@@ -632,6 +632,9 @@ EOF_MAIN_PY
 # Environment & Config
 python-dotenv>=1.0.0,<2.0.0
 
+# Web Server & Reloading
+watchfiles>=0.18.0,<1.0.0 # For uvicorn --reload
+
 # Google Cloud & AI
 google-adk==0.1.0
 
@@ -723,11 +726,7 @@ function install_frontend_dependencies {
   mkdir -p "$ABS_FRONTEND_DIR"
 
   # --- index.html ---
-  # Use absolute path for file creation
-  local index_html_path="$ABS_FRONTEND_DIR/index.html"
-  log_info "Creating file: $index_html_path"
-  # Use single quotes around delimiter to prevent expansion within HTML/JS
-  cat > "$index_html_path" <<'EOF_HTML'
+  read -r -d '' index_html_content << 'EOF_HTML'
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -783,15 +782,10 @@ function install_frontend_dependencies {
 </body>
 </html>
 EOF_HTML
-  # Check cat status
-  if [ $? -ne 0 ]; then log_error "Failed to write $index_html_path"; return 1; fi
-
+  create_or_overwrite_file_heredoc "$FRONTEND_DIR/index.html" "$index_html_content"
 
   # --- dapp.js ---
-  local dapp_js_path="$ABS_FRONTEND_DIR/dapp.js"
-  log_info "Creating file: $dapp_js_path"
-  # Use single quotes around delimiter to prevent shell expansion in JS
-  cat > "$dapp_js_path" <<'EOF_JS'
+  read -r -d '' dapp_js_content << 'EOF_JS'
 document.addEventListener('DOMContentLoaded', () => {
     // --- Element References ---
     const queryInput = document.getElementById('queryInput');
@@ -803,8 +797,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const modelNameInput = document.getElementById('modelName');
     const creationStatus = document.getElementById('creationStatus');
 
-    // Determine backend URL - hardcoded for this script's simplicity
-    const backendBaseUrl = `http://localhost:8000`; // Matches default BACKEND_PORT
+    // Determine backend URL - dynamically set by build script
+    const backendBaseUrl = "__BACKEND_BASE_URL__";
 
     console.log(`Frontend configured to use backend at: ${backendBaseUrl}`);
 
@@ -928,15 +922,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 });
 EOF_JS
-  # Check cat status
-  if [ $? -ne 0 ]; then log_error "Failed to write $dapp_js_path"; return 1; fi
-
+  dapp_js_content="${dapp_js_content//__BACKEND_BASE_URL__/http:\/\/localhost:$BACKEND_PORT}"
+  create_or_overwrite_file_heredoc "$FRONTEND_DIR/dapp.js" "$dapp_js_content"
 
   # --- styled.css ---
-  local styled_css_path="$ABS_FRONTEND_DIR/styled.css"
-  log_info "Creating file: $styled_css_path"
-  # Use single quotes around delimiter for CSS
-  cat > "$styled_css_path" <<'EOF_CSS'
+  read -r -d '' styled_css_content << 'EOF_CSS'
 /* General Styles */
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -1131,15 +1121,10 @@ button:active {
     }
 }
 EOF_CSS
-  # Check cat status
-  if [ $? -ne 0 ]; then log_error "Failed to write $styled_css_path"; return 1; fi
-
+  create_or_overwrite_file_heredoc "$FRONTEND_DIR/styled.css" "$styled_css_content"
 
   # --- server.js ---
-  local server_js_path="$ABS_FRONTEND_DIR/server.js"
-  log_info "Creating file: $server_js_path"
-  # Use single quotes around delimiter for Node.js
-  cat > "$server_js_path" <<'EOF_NODE'
+  read -r -d '' server_js_content << 'EOF_NODE'
 const express = require('express');
 const path = require('path');
 const app = express();
@@ -1223,15 +1208,10 @@ app.on('error', (error) => {
   }
 });
 EOF_NODE
-  # Check cat status
-  if [ $? -ne 0 ]; then log_error "Failed to write $server_js_path"; return 1; fi
-
+  create_or_overwrite_file_heredoc "$FRONTEND_DIR/server.js" "$server_js_content"
 
   # --- package.json ---
-  local package_json_path="$ABS_FRONTEND_DIR/package.json"
-  log_info "Creating file: $package_json_path"
-  # Use single quotes around delimiter for JSON
-  cat > "$package_json_path" <<'EOF_JSON'
+  read -r -d '' package_json_content << 'EOF_JSON'
 {
   "name": "agentic-frontend",
   "version": "1.0.0",
@@ -1249,11 +1229,9 @@ EOF_NODE
   "license": "ISC"
 }
 EOF_JSON
-  # Check cat status
-  if [ $? -ne 0 ]; then log_error "Failed to write $package_json_path"; return 1; fi
+  create_or_overwrite_file_heredoc "$FRONTEND_DIR/package.json" "$package_json_content"
 
-
-  log_info "Frontend files created in $ABS_FRONTEND_DIR."
+  log_info "Frontend files created in $FRONTEND_DIR (relative to $PROJECT_ROOT)." # Adjusted log
 
   log_info "Installing frontend dependencies (npm)..."
   # Store current dir
