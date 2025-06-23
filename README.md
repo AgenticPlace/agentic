@@ -41,7 +41,7 @@ This project provides a decoupled frontend/backend application allowing users to
 
 ---
 
-## 1. Introduction
+## Introduction
 
 Welcome to the AGENTIC AI augmented agency project (v1.0.0). AGENTIC serves a FastAPI backend with a Node.js frontend for building web interfaces that interact with AI agents developed using the Google Agent Development Kit (ADK).
 
@@ -57,7 +57,7 @@ This project is ideal for developers looking to understand how to integrate Goog
 
 ---
 
-## 2. Technical Explanation
+## Technical Explanation
 
 This section details the system's architecture, components, and the technologies employed.
 
@@ -155,7 +155,7 @@ graph LR
 
 ---
 
-## 3. Usage Guide
+## Usage Guide
 
 This section explains how to get the application running and how to use it.
 
@@ -172,19 +172,19 @@ Ensure the following software is installed on your system and accessible in your
 
 The setup is fully automated by the provided Bash script.
 
-1.  **Clone the Repository:**
+  **Clone the Repository:**
     ```bash
     git clone <your-repository-url>
     cd <repository-directory-name> # e.g., cd ag
     ```
 
-2.  **Make Script Executable (If Necessary):**
+  **Make Script Executable (If Necessary):**
     On Linux/macOS, you might need to grant execute permissions:
     ```bash
     chmod +x run3.sh # Or the final name of your script
     ```
 
-3.  **Run the Setup Script:**
+  **Run the Setup Script:**
     Execute the script from the project's root directory:
     ```bash
     ./run3.sh # Or the final name of your script
@@ -250,7 +250,7 @@ While the primary interaction is through the UI, the backend exposes RESTful end
 
 ---
 
-## 4. Configuration
+##  Configuration
 
 ### Backend Environment (`.env`)
 
@@ -268,7 +268,7 @@ The core backend configuration resides in `./agentic/backend/.env`. This file is
 
 ---
 
-## 5. Development & Troubleshooting
+##  Development & Troubleshooting
 
 ### Manual Execution
 
@@ -322,7 +322,7 @@ Use `tail -f <log_file_path>` to monitor logs in real-time.
 
 ---
 
-## 6. Contributing
+## Contributing
 
 Contributions, issues, and feature requests are welcome!
 
@@ -337,7 +337,7 @@ Contributions, issues, and feature requests are welcome!
 
 ---
 
-## 7. License
+## License
 
 Distributed under the MIT License. See `LICENSE` file for more information.
 
