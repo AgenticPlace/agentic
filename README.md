@@ -65,8 +65,8 @@ The AGENTIC system, through its `agentic.sh` deployment script, sets up a comple
 
 2.  **Clone the Repository (if applicable):**
     ```bash
-    git clone <repository_url>
-    cd <repository_directory>
+    git clone https://github.com/AgenticPlace/agentic
+    cd agentic
     ```
 
 3.  **Place mindXalpha Project:**
